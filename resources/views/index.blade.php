@@ -1,34 +1,106 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Title</title>
+    <title>Chat Laravel Pusher | Edlin App</title>
+    <link rel="icon" href="https://assets.edlin.app/favicon/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- JavaScript -->
     <script src="https://js.pusher.com/7.2/pusher.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
+    <!-- End JavaScript -->
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="/style.css">
+    <!-- End CSS -->
+
 </head>
+<style>
+    .messages {
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 10px;
+        background-color: #f9f9f9;
+        border-radius: 5px;
+        box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.1);
+    }
+</style>
 
 <body>
+    <div class="chat">
 
-    <div class="top">
-        <img src="https://assets.edlin.app/images/rossedlin/03/rossedlin-03-100.jpg" alt="Avatar">
-        <div>
-            <p>Ross Edlin</p>
-            <small> Online</small>
+        <!-- Header -->
+        <div class="top">
+            <img src="https://assets.edlin.app/images/rossedlin/03/rossedlin-03-100.jpg" alt="Avatar">
+            <div>
+                <p>Ross Edlin</p>
+                <small>Online</small>
+            </div>
         </div>
-    </div>
+        <!-- End Header -->
 
-    <div class="messages">
-        @include('receive', ['message' => "Hey! What's up ZONEDEV"])
-    </div>
-    <div class="bottom">
-        <form action="">
-            <input type="text" name="" id="message" placeholder="Enter message..." autocomplete="off">
-            <button type="submit">Send Message</button>
-        </form>
+        <!-- Chat -->
+        <div class="messages">
+            @include('receive', ['message' => "Hey! What's up!  👋"])
+            @include('receive', [
+                'message' => 'Ask a friend to open this link and you can chat with them!',
+            ])
+        </div>
+        <!-- End Chat -->
+
+        <!-- Footer -->
+        <div class="bottom">
+            <form>
+                <input type="text" id="message" name="message" placeholder="Enter message..." autocomplete="off">
+                <button type="submit"></button>
+            </form>
+        </div>
+        <!-- End Footer -->
+
     </div>
 </body>
+
+<script>
+    $(".messages").scrollTop($(".messages")[0].scrollHeight);
+
+    const pusher = new Pusher('{{ config('broadcasting.connections.pusher.key') }}', {
+        cluster: 'eu'
+    });
+    const channel = pusher.subscribe('public');
+
+    //Receive messages
+    channel.bind('chat', function(data) {
+        $.post("/receive", {
+                _token: '{{ csrf_token() }}',
+                message: data.message,
+            })
+            .done(function(res) {
+                $(".messages > .message").last().after(res);
+                $(".messages").scrollTop($(".messages")[0].scrollHeight); // Tự động cuộn xuống
+            });
+    });
+
+    //Broadcast messages
+    $("form").submit(function(event) {
+        event.preventDefault();
+
+        $.ajax({
+            url: "/broadcast",
+            method: 'POST',
+            headers: {
+                'X-Socket-Id': pusher.connection.socket_id
+            },
+            data: {
+                _token: '{{ csrf_token() }}',
+                message: $("form #message").val(),
+            }
+        }).done(function(res) {
+            $(".messages > .message").last().after(res);
+            $("form #message").val('');
+            $(".messages").scrollTop($(".messages")[0].scrollHeight); // Tự động cuộn xuống
+        });
+    });
+</script>
 
 </html>
